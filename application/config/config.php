@@ -22,7 +22,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | If you need to allow multiple domains, remember that this file is still
 | a PHP script and you can easily do that on your own.
 |
-if (isset($_SERVER['HTTP_HOST'])) {
+// Detect Vercel environment first
+if (getenv('VERCEL') || getenv('VERCEL_URL')) {
+    // Running on Vercel - always use HTTPS
+    $host = isset($_SERVER['HTTP_X_FORWARDED_HOST']) ? $_SERVER['HTTP_X_FORWARDED_HOST'] :
+            (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] :
+            getenv('VERCEL_URL'));
+    $config['base_url'] = 'https://' . $host . '/';
+} elseif (isset($_SERVER['HTTP_HOST'])) {
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) ? 'https://' : 'http://';
     $script_path = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
     $base_folder = trim($script_path, '/');
@@ -397,7 +404,8 @@ $config['sess_driver'] = 'files';
 $config['sess_cookie_name'] = 'ci_session';
 $config['sess_samesite'] = 'Lax';
 $config['sess_expiration'] = 7200;
-$config['sess_save_path'] = NULL;
+// Vercel serverless only has /tmp as writable
+$config['sess_save_path'] = (getenv('VERCEL') || getenv('VERCEL_URL')) ? '/tmp' : NULL;
 $config['sess_match_ip'] = FALSE;
 $config['sess_time_to_update'] = 300;
 $config['sess_regenerate_destroy'] = FALSE;
