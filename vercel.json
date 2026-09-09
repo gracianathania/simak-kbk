@@ -3,6 +3,9 @@
   "functions": {
     "api/index.php": {
       "runtime": "vercel-php@0.7.3"
+    },
+    "api/debug.php": {
+      "runtime": "vercel-php@0.7.3"
     }
   },
   "headers": [
@@ -43,6 +46,10 @@
     {
       "source": "/assets_index/(.*)",
       "destination": "/assets_index/$1"
+    },
+    {
+      "source": "/debug",
+      "destination": "/api/debug.php"
     },
     {
       "source": "/(.*)",

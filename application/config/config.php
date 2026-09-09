@@ -22,17 +22,18 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | If you need to allow multiple domains, remember that this file is still
 | a PHP script and you can easily do that on your own.
 |
-// Detect Vercel environment first
-if (getenv('VERCEL') || getenv('VERCEL_URL')) {
-    // Running on Vercel - always use HTTPS
-    $host = isset($_SERVER['HTTP_X_FORWARDED_HOST']) ? $_SERVER['HTTP_X_FORWARDED_HOST'] :
-            (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] :
-            getenv('VERCEL_URL'));
-    $config['base_url'] = 'https://' . $host . '/';
+// Auto-detect base_url for both local and Vercel environments
+// On Vercel: HTTP_X_FORWARDED_HOST = real domain, HTTP_HOST = localhost (internal)
+// On local: HTTP_HOST = localhost with subfolder path
+if (isset($_SERVER['HTTP_X_FORWARDED_HOST']) && !empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
+    // Running behind a proxy (Vercel, etc.) - use forwarded host
+    $protocol = (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https://' : 'http://';
+    $config['base_url'] = $protocol . $_SERVER['HTTP_X_FORWARDED_HOST'] . '/';
 } elseif (isset($_SERVER['HTTP_HOST'])) {
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) ? 'https://' : 'http://';
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
     $script_path = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
     $base_folder = trim($script_path, '/');
+    // Skip 'api' folder (Vercel entry point)
     if ($base_folder && $base_folder !== 'api') {
         $config['base_url'] = $protocol . $_SERVER['HTTP_HOST'] . '/' . $base_folder . '/';
     } else {
