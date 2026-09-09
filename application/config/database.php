@@ -73,26 +73,67 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $active_group = 'default';
 $query_builder = TRUE;
 
-$db['default'] = array(
-	'dsn'	=> '',
-	'hostname' => getenv('DB_HOST') ? getenv('DB_HOST') : 'localhost',
-	'username' => getenv('DB_USER') ? getenv('DB_USER') : 'root',
-	'password' => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
-	'database' => getenv('DB_NAME') ? getenv('DB_NAME') : 'simak',
-	'port'     => getenv('DB_PORT') ? (int)getenv('DB_PORT') : 3306,
-	'dbdriver' => 'mysqli',
-	'dbprefix' => '',
-	'pconnect' => FALSE,
-	// 'db_debug' => (ENVIRONMENT !== 'production'),
-	'db_debug' => FALSE,
-	'cache_on' => FALSE,
-	'cachedir' => '',
-	'char_set' => 'utf8',
-	'dbcollat' => 'utf8_general_ci',
-	'swap_pre' => '',
-	'encrypt' => FALSE,
-	'compress' => FALSE,
-	'stricton' => FALSE,
-	'failover' => array(),
-	'save_queries' => TRUE
-);
+$use_mysql = FALSE;
+
+// If DB_HOST is explicitly provided (e.g. from Vercel Cloud DB env)
+if (getenv('DB_HOST')) {
+    $use_mysql = TRUE;
+} else if (!getenv('VERCEL') && !isset($_SERVER['VERCEL'])) {
+    // Local development - check if MySQL extension can connect to localhost
+    if (function_exists('mysqli_init')) {
+        $conn = @mysqli_init();
+        if ($conn && @mysqli_real_connect($conn, 'localhost', 'root', '', 'simak', 3306, null, 0)) {
+            $use_mysql = TRUE;
+            @mysqli_close($conn);
+        }
+    }
+}
+
+if ($use_mysql) {
+    $db['default'] = array(
+        'dsn'	   => '',
+        'hostname' => getenv('DB_HOST') ? getenv('DB_HOST') : 'localhost',
+        'username' => getenv('DB_USER') ? getenv('DB_USER') : 'root',
+        'password' => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
+        'database' => getenv('DB_NAME') ? getenv('DB_NAME') : 'simak',
+        'port'     => getenv('DB_PORT') ? (int)getenv('DB_PORT') : 3306,
+        'dbdriver' => 'mysqli',
+        'dbprefix' => '',
+        'pconnect' => FALSE,
+        'db_debug' => FALSE,
+        'cache_on' => FALSE,
+        'cachedir' => '',
+        'char_set' => 'utf8',
+        'dbcollat' => 'utf8_general_ci',
+        'swap_pre' => '',
+        'encrypt'  => FALSE,
+        'compress' => FALSE,
+        'stricton' => FALSE,
+        'failover' => array(),
+        'save_queries' => TRUE
+    );
+} else {
+    // Serverless Vercel / Embedded SQLite fallback
+    $sqlite_file = APPPATH . 'database/simak.sqlite';
+    $db['default'] = array(
+        'dsn'	   => '',
+        'hostname' => '',
+        'username' => '',
+        'password' => '',
+        'database' => $sqlite_file,
+        'dbdriver' => 'sqlite3',
+        'dbprefix' => '',
+        'pconnect' => FALSE,
+        'db_debug' => FALSE,
+        'cache_on' => FALSE,
+        'cachedir' => '',
+        'char_set' => 'utf8',
+        'dbcollat' => 'utf8_general_ci',
+        'swap_pre' => '',
+        'encrypt'  => FALSE,
+        'compress' => FALSE,
+        'stricton' => FALSE,
+        'failover' => array(),
+        'save_queries' => TRUE
+    );
+}
