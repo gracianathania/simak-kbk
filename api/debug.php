@@ -1,30 +1,17 @@
 <?php
-// Debug: capture $_SERVER vars as they exist in the api/index.php context
-// BEFORE and AFTER chdir/require
-header('Content-Type: application/json');
+// Read the debug log from api/index.php
+$api_index_debug = @file_get_contents('/tmp/api_index_debug.json');
 
-$before = [
+// Also show what THIS endpoint sees
+$this_endpoint = [
     'HTTP_HOST' => $_SERVER['HTTP_HOST'] ?? 'NOT SET',
     'HTTP_X_FORWARDED_HOST' => $_SERVER['HTTP_X_FORWARDED_HOST'] ?? 'NOT SET',
     'HTTP_X_FORWARDED_PROTO' => $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? 'NOT SET',
     'SCRIPT_NAME' => $_SERVER['SCRIPT_NAME'] ?? 'NOT SET',
-    'SCRIPT_FILENAME' => $_SERVER['SCRIPT_FILENAME'] ?? 'NOT SET',
-    'DOCUMENT_ROOT' => $_SERVER['DOCUMENT_ROOT'] ?? 'NOT SET',
-    'PHP_SELF' => $_SERVER['PHP_SELF'] ?? 'NOT SET',
-    'cwd_before' => getcwd(),
 ];
 
-// This is what api/index.php does:
-chdir(dirname(__DIR__));
-
-$after_chdir = [
-    'cwd_after_chdir' => getcwd(),
-    'dirname_dir' => dirname(__DIR__),
-    'SCRIPT_NAME_after' => $_SERVER['SCRIPT_NAME'] ?? 'NOT SET',
-];
-
+header('Content-Type: application/json');
 echo json_encode([
-    'before_chdir' => $before,
-    'after_chdir' => $after_chdir,
-    'note' => 'The main api/index.php then requires index.php which bootstraps CI',
+    'api_index_php_sees' => $api_index_debug ? json_decode($api_index_debug, true) : 'NO LOG FILE FOUND',
+    'debug_endpoint_sees' => $this_endpoint,
 ], JSON_PRETTY_PRINT);
