@@ -23,13 +23,27 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | a PHP script and you can easily do that on your own.
 |
 // Auto-detect base_url for both local and Vercel environments
-// On Vercel: HTTP_X_FORWARDED_HOST = real domain, HTTP_HOST = localhost (internal)
-// On local: HTTP_HOST = localhost with subfolder path
-if (isset($_SERVER['HTTP_X_FORWARDED_HOST']) && !empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
-    // Running behind a proxy (Vercel, etc.) - use forwarded host
+// Priority: 1) VERCEL env vars, 2) X-Forwarded-Host, 3) HTTP_HOST, 4) localhost fallback
+
+// Check if running on Vercel (env vars are always available on Vercel)
+$vercel_host = null;
+if (getenv('VERCEL_URL')) {
+    $vercel_host = preg_replace('#^https?://#', '', getenv('VERCEL_URL'));
+}
+if (getenv('VERCEL_PROJECT_PRODUCTION_URL')) {
+    // Production URL takes priority over preview URL
+    $vercel_host = preg_replace('#^https?://#', '', getenv('VERCEL_PROJECT_PRODUCTION_URL'));
+}
+
+if ($vercel_host) {
+    // Running on Vercel - always use HTTPS
+    $config['base_url'] = 'https://' . $vercel_host . '/';
+} elseif (isset($_SERVER['HTTP_X_FORWARDED_HOST']) && !empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
+    // Running behind a reverse proxy
     $protocol = (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https://' : 'http://';
     $config['base_url'] = $protocol . $_SERVER['HTTP_X_FORWARDED_HOST'] . '/';
 } elseif (isset($_SERVER['HTTP_HOST'])) {
+    // Standard server
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
     $script_path = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
     $base_folder = trim($script_path, '/');
