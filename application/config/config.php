@@ -23,38 +23,37 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | a PHP script and you can easily do that on your own.
 |
 // Auto-detect base_url for both local and Vercel environments
-// Priority: 1) VERCEL env vars, 2) X-Forwarded-Host, 3) HTTP_HOST, 4) localhost fallback
+// Priority: 1) VERCEL_BASE_URL constant (set by api/index.php), 2) VERCEL env vars, 3) X-Forwarded-Host, 4) HTTP_HOST, 5) localhost fallback
 
-// Check if running on Vercel (env vars are always available on Vercel)
-$vercel_host = null;
-if (getenv('VERCEL_URL')) {
-    $vercel_host = preg_replace('#^https?://#', '', getenv('VERCEL_URL'));
-}
-if (getenv('VERCEL_PROJECT_PRODUCTION_URL')) {
-    // Production URL takes priority over preview URL
-    $vercel_host = preg_replace('#^https?://#', '', getenv('VERCEL_PROJECT_PRODUCTION_URL'));
-}
-
-if ($vercel_host) {
-    // Running on Vercel - always use HTTPS
-    $config['base_url'] = 'https://' . $vercel_host . '/';
-} elseif (isset($_SERVER['HTTP_X_FORWARDED_HOST']) && !empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
-    // Running behind a reverse proxy
-    $protocol = (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https://' : 'http://';
-    $config['base_url'] = $protocol . $_SERVER['HTTP_X_FORWARDED_HOST'] . '/';
-} elseif (isset($_SERVER['HTTP_HOST'])) {
-    // Standard server
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
-    $script_path = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
-    $base_folder = trim($script_path, '/');
-    // Skip 'api' folder (Vercel entry point)
-    if ($base_folder && $base_folder !== 'api') {
-        $config['base_url'] = $protocol . $_SERVER['HTTP_HOST'] . '/' . $base_folder . '/';
-    } else {
-        $config['base_url'] = $protocol . $_SERVER['HTTP_HOST'] . '/';
-    }
+if (defined('VERCEL_BASE_URL')) {
+    // Set by api/index.php - most reliable method (survives PHP require chain)
+    $config['base_url'] = VERCEL_BASE_URL;
 } else {
-    $config['base_url'] = 'http://localhost/SysForce/';
+    // Check if running on Vercel via env vars
+    $vercel_host = null;
+    if (getenv('VERCEL_PROJECT_PRODUCTION_URL')) {
+        $vercel_host = preg_replace('#^https?://#', '', getenv('VERCEL_PROJECT_PRODUCTION_URL'));
+    } elseif (getenv('VERCEL_URL')) {
+        $vercel_host = preg_replace('#^https?://#', '', getenv('VERCEL_URL'));
+    }
+
+    if ($vercel_host) {
+        $config['base_url'] = 'https://' . $vercel_host . '/';
+    } elseif (isset($_SERVER['HTTP_X_FORWARDED_HOST']) && !empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
+        $protocol = (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https://' : 'http://';
+        $config['base_url'] = $protocol . $_SERVER['HTTP_X_FORWARDED_HOST'] . '/';
+    } elseif (isset($_SERVER['HTTP_HOST'])) {
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+        $script_path = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+        $base_folder = trim($script_path, '/');
+        if ($base_folder && $base_folder !== 'api') {
+            $config['base_url'] = $protocol . $_SERVER['HTTP_HOST'] . '/' . $base_folder . '/';
+        } else {
+            $config['base_url'] = $protocol . $_SERVER['HTTP_HOST'] . '/';
+        }
+    } else {
+        $config['base_url'] = 'http://localhost/SysForce/';
+    }
 }
 
 /*

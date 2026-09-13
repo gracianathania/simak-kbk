@@ -13,50 +13,43 @@ $is_serverless = (
 );
 
 if ($is_serverless) {
-    // ALWAYS determine the real host on Vercel - don't check if HTTP_HOST === 'localhost'
-    // because Vercel's PHP runtime may set HTTP_HOST inconsistently
+    // Determine the real host from multiple sources
     $real_host = $_SERVER['HTTP_X_FORWARDED_HOST']
         ?? $_SERVER['HTTP_X_VERCEL_DEPLOYMENT_URL']
         ?? null;
     
-    // Fallback to VERCEL_URL env var (always available on Vercel)
-    if (!$real_host) {
-        $vercel_url = getenv('VERCEL_URL');
-        if ($vercel_url) {
-            $real_host = $vercel_url;
-        }
-    }
-
-    // Fallback to VERCEL_PROJECT_PRODUCTION_URL env var
+    // Fallback to VERCEL_PROJECT_PRODUCTION_URL (custom domain / production)
     if (!$real_host) {
         $prod_url = getenv('VERCEL_PROJECT_PRODUCTION_URL');
         if ($prod_url) {
-            $real_host = $prod_url;
+            $real_host = preg_replace('#^https?://#', '', $prod_url);
+        }
+    }
+
+    // Fallback to VERCEL_URL env var
+    if (!$real_host) {
+        $vercel_url = getenv('VERCEL_URL');
+        if ($vercel_url) {
+            $real_host = preg_replace('#^https?://#', '', $vercel_url);
         }
     }
     
     if ($real_host) {
-        // Remove any protocol prefix if present
-        $real_host = preg_replace('#^https?://#', '', rtrim($real_host, '/'));
+        $real_host = rtrim($real_host, '/');
         $_SERVER['HTTP_HOST'] = $real_host;
         $_SERVER['HTTP_X_FORWARDED_HOST'] = $real_host;
         $_SERVER['HTTP_X_FORWARDED_PROTO'] = 'https';
         $_SERVER['HTTPS'] = 'on';
         $_SERVER['SERVER_NAME'] = $real_host;
+        $_SERVER['SERVER_PORT'] = '443';
     }
 
-    // Debug: log what we see (temporary - remove after fixing)
-    @file_put_contents('/tmp/api_index_debug.json', json_encode([
-        'is_serverless' => true,
-        'real_host' => $real_host,
-        'original_HTTP_HOST' => $_SERVER['HTTP_HOST'] ?? 'NOT SET',
-        'HTTP_X_FORWARDED_HOST' => $_SERVER['HTTP_X_FORWARDED_HOST'] ?? 'NOT SET',
-        'env_VERCEL_URL' => getenv('VERCEL_URL') ?: 'NOT SET',
-        'env_VERCEL' => getenv('VERCEL') ?: 'NOT SET',
-        'SCRIPT_NAME' => $_SERVER['SCRIPT_NAME'] ?? 'NOT SET',
-    ], JSON_PRETTY_PRINT));
+    // CRITICAL: Use define() to pass base_url to CodeIgniter config
+    // This survives PHP's built-in server require() chain which may reset $_SERVER
+    if ($real_host) {
+        define('VERCEL_BASE_URL', 'https://' . $real_host . '/');
+    }
 }
 
 chdir(dirname(__DIR__));
 require dirname(__DIR__) . '/index.php';
-
