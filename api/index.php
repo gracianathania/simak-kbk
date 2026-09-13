@@ -44,7 +44,19 @@ if ($is_serverless) {
         $_SERVER['HTTPS'] = 'on';
         $_SERVER['SERVER_NAME'] = $real_host;
     }
+
+    // Debug: log what we see (temporary - remove after fixing)
+    @file_put_contents('/tmp/api_index_debug.json', json_encode([
+        'is_serverless' => true,
+        'real_host' => $real_host,
+        'original_HTTP_HOST' => $_SERVER['HTTP_HOST'] ?? 'NOT SET',
+        'HTTP_X_FORWARDED_HOST' => $_SERVER['HTTP_X_FORWARDED_HOST'] ?? 'NOT SET',
+        'env_VERCEL_URL' => getenv('VERCEL_URL') ?: 'NOT SET',
+        'env_VERCEL' => getenv('VERCEL') ?: 'NOT SET',
+        'SCRIPT_NAME' => $_SERVER['SCRIPT_NAME'] ?? 'NOT SET',
+    ], JSON_PRETTY_PRINT));
 }
 
 chdir(dirname(__DIR__));
 require dirname(__DIR__) . '/index.php';
+
